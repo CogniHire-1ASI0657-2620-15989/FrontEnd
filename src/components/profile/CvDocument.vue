@@ -1,19 +1,41 @@
 <script setup>
+// Importa la función computed de Vue.
+// computed permite crear valores derivados que se actualizan automáticamente
+// cuando cambian los datos de los que dependen.
 import { computed } from 'vue'
+  
+// Importa una función auxiliar para obtener el nombre completo del usuario.
 import { nombreCompleto } from '@/utils/format'
 
+// Define las propiedades (props) que este componente recibe desde su componente padre.
+// En este caso, recibe un objeto llamado "usuario".
+// required: true significa que el componente necesita recibir esta propiedad obligatoriamente.
 const props = defineProps({ usuario: { type: Object, required: true } })
 
+  
+// Crea un valor calculado con los datos de contacto del usuario.
+// Se toman email, teléfono y ciudad y se almacenan únicamente los que tengan un valor.
+// filter(Boolean) elimina valores vacíos, null, undefined, etc.
 const contacto = computed(() =>
   [props.usuario.email, props.usuario.telefono, props.usuario.ciudad].filter(Boolean)
 )
+
+// Crea un valor calculado para mostrar el documento del usuario.
+// Si existe un documento, muestra el tipo de documento junto con su número.
+// Si no existe, devuelve una cadena vacía.
 const documento = computed(() =>
   props.usuario.documento ? `${props.usuario.tipoDocumento} ${props.usuario.documento}` : ''
 )
 </script>
 
 <template>
+   <!--
+    Contenedor principal del CV.
+    Representa visualmente todo el currículum del usuario.
+  -->
   <article class="cv">
+    <!-- ==================== CABECERA DEL CV ==================== -->
+    <!-- Contiene la información principal del usuario -->
     <header class="cv__cab">
       <h1>{{ nombreCompleto(usuario) }}</h1>
       <p class="cv__cargo">
