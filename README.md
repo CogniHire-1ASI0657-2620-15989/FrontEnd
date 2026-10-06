@@ -1,4 +1,4 @@
-# PathBridge — Frontend (Vite + Vue 3)
+# Cognihire - PathBridge — Frontend (Vite + Vue 3)
 
 Frontend del proyecto PathBridge: login y registro funcionales, perfil con curriculum
 generado dentro de la pagina, dashboard y busqueda de trabajo con analisis de brechas.
