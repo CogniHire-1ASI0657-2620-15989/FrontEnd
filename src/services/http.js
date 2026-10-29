@@ -21,7 +21,11 @@ export async function request(path, { method = 'GET', body, auth = true } = {}) 
   })
 
   const data = await res.json().catch(() => null)
-  if (!res.ok) throw new Error(data?.detail ?? data?.message ?? 'No pudimos conectar con el servidor')
+  if (!res.ok) {
+    const error = new Error(typeof data?.detail === 'string' ? data.detail : data?.message ?? 'No pudimos conectar con el servidor')
+    error.status = res.status
+    throw error
+  }
   return data
 }
 

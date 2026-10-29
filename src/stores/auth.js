@@ -24,7 +24,8 @@ export const useAuthStore = defineStore('auth', () => {
   })
 
   async function iniciar() {
-    usuario.value = await authService.sesionActual()
+    try { usuario.value = await authService.sesionActual() }
+    catch (e) { if (e.status !== 401) throw e; localStorage.removeItem('pb.token'); usuario.value = null }
     listo.value = true
   }
 
