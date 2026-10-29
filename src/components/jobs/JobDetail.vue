@@ -82,7 +82,7 @@ const ruta = computed(() => rutaSugerida(props.vacante.analisis.faltantesDuras))
 
     <footer class="detalle__pie">
       <BaseButton @click="$emit('postular', vacante.id)">
-        {{ estado ? 'Actualizar estado' : 'Marcar como postulado' }}
+        {{ estado ? 'Ver o crear mi ruta' : 'Postular y crear Learning Path' }}
       </BaseButton>
       <BaseButton variante="secundario" @click="$emit('favorito', vacante.id)">
         {{ favorita ? 'Quitar de guardados' : 'Guardar vacante' }}

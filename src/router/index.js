@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { jobsService } from '@/services/jobsService'
 
 const routes = [
   { path: '/', redirect: '/dashboard' },
@@ -33,7 +34,29 @@ const routes = [
     component: () => import('@/views/ProfileView.vue'),
     meta: { titulo: 'Mi perfil' }
   },
-  { path: '/:pathMatch(.*)*', name: 'no-encontrado', component: () => import('@/views/NotFoundView.vue') }
+  { 
+    path: '/:pathMatch(.*)*', 
+    name: 'no-encontrado', 
+    component: () => import('@/views/NotFoundView.vue') },
+  { 
+    path: '/empleos/:id', 
+    component: () => import('@/views/JobDetailView.vue'), 
+    meta: { titulo: 'Detalle del empleo' } 
+  },
+  { 
+    path: '/aprendizaje', 
+    component: () => import('@/views/LearningPathView.vue'), 
+    meta: { titulo: 'Learning Path' } 
+  },
+  { 
+    path: '/certificados/:id', 
+    component: () => import('@/views/CertificateView.vue'), 
+    meta: { titulo: 'Constancia de aprendizaje' } },
+    { 
+      path: '/asistente', 
+      component: () => import('@/views/ChatView.vue'), 
+      meta: { titulo: 'Asistente profesional' } 
+    }
 ]
 
 const router = createRouter({
@@ -55,5 +78,14 @@ router.beforeEach(async (to) => {
   document.title = to.meta.titulo ? `${to.meta.titulo} · PathBridge` : 'PathBridge'
   return true
 })
+
+if (to.name === 'dashboard' && auth.autenticado) {
+  try {
+    const applications = await jobsService.postulaciones(auth.usuario.id)
+    if (!applications.length) {
+      return { name: 'empleos', query: { inicio: '1' } }
+    }
+  } catch { /* Dashboard displays service errors. */ }
+}
 
 export default router

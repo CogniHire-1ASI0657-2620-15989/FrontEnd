@@ -24,7 +24,11 @@ const publico = ({ password, ...resto }) => resto
 export const mockApi = {
   async registrar(datos) {
     await espera()
+    if (datos.tipoDocumento !== 'DNI') throw new Error('El registro requiere un DNI')
     const lista = usuarios()
+    if (datos.tipoDocumento === 'DNI' && (!/^\d{8}$/.test(datos.documento) || datos.identidad?.documento !== datos.documento || datos.identidad?.nombre !== datos.nombre.trim() || datos.identidad?.apellido !== datos.apellido.trim())) {
+      throw new Error('Completa la validación local de DNI')
+    }
     if (lista.some((u) => u.email.toLowerCase() === datos.email.toLowerCase())) {
       throw new Error('Ese correo ya esta registrado')
     }
@@ -76,6 +80,9 @@ export const mockApi = {
     const lista = usuarios()
     const i = lista.findIndex((u) => u.id === id)
     if (i === -1) throw new Error('No encontramos tu cuenta')
+    if (cambios.documento && lista.some((u, n) => n !== i && u.documento === cambios.documento && u.tipoDocumento === (cambios.tipoDocumento ?? lista[i].tipoDocumento))) throw new Error('Este documento ya tiene una cuenta')
+    if (cambios.documento && cambios.documento !== lista[i].documento && (cambios.tipoDocumento ?? lista[i].tipoDocumento) === 'DNI') throw new Error('El DNI de registro no se puede modificar desde el perfil')
+    if (lista[i].tipoDocumento === 'DNI' && cambios.tipoDocumento && cambios.tipoDocumento !== 'DNI') throw new Error('El tipo de documento de registro no se puede modificar')
     lista[i] = { ...lista[i], ...cambios }
     guardar(KEY_USERS, lista)
     return publico(lista[i])

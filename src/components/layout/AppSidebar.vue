@@ -12,9 +12,11 @@ const auth = useAuthStore()
 const route = useRoute()
 
 const enlaces = [
+  { to: '/aprendizaje', texto: 'Learning Path', icono: 'M4 4h16v16H4z' },
   { to: '/perfil', texto: 'Mi perfil', icono: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 2c-4 0-7 2.2-7 5v1h14v-1c0-2.8-3-5-7-5Z' },
   { to: '/dashboard', texto: 'Dashboard', icono: 'M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6v-9h-6v9Zm0-16v5h6V4h-6Z' },
-  { to: '/empleos', texto: 'Busqueda de trabajo', icono: 'M10 4a6 6 0 1 0 3.5 10.9l4.3 4.3 1.4-1.4-4.3-4.3A6 6 0 0 0 10 4Zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8Z' }
+  { to: '/empleos', texto: 'Busqueda de trabajo', icono: 'M10 4a6 6 0 1 0 3.5 10.9l4.3 4.3 1.4-1.4-4.3-4.3A6 6 0 0 0 10 4Zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8Z' },
+  { to: '/asistente', texto: 'Asistente IA', icono: 'M3 3h18v14H9l-6 4V3z' },
 ]
 
 const activo = (to) => route.path.startsWith(to)

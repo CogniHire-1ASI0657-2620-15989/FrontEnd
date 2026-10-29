@@ -1,10 +1,11 @@
 <script setup>
 import { onMounted, ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
+const router = useRouter()
 import { useJobsStore } from '@/stores/jobs'
 import { useAuthStore } from '@/stores/auth'
 import { sectores } from '@/data/jobs'
 import JobCard from '@/components/jobs/JobCard.vue'
-import JobDetail from '@/components/jobs/JobDetail.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -18,7 +19,6 @@ const modalidad = ref('')
 const nivel = ref('')
 const sector = ref('')
 const soloGuardadas = ref(false)
-const seleccionadaId = ref(null)
 
 const modalidades = ['Remoto', 'Hibrido', 'Presencial']
 const niveles = ['Practicante', 'Junior', 'Semi senior']
@@ -26,15 +26,13 @@ const niveles = ['Practicante', 'Junior', 'Semi senior']
 const lista = computed(() =>
   soloGuardadas.value ? jobs.vacantesFavoritas : jobs.vacantesAnalizadas
 )
-const seleccionada = computed(() => lista.value.find((v) => v.id === seleccionadaId.value) ?? null)
 
 onMounted(async () => {
   await jobs.buscar()
-  await jobs.cargarPostulaciones()
+  try { await jobs.cargarPostulaciones() } catch(e) { jobs.error = e.message }
 })
 
 function buscar() {
-  seleccionadaId.value = null
   jobs.buscar({
     q: q.value,
     ubicacion: ubicacion.value,
@@ -51,19 +49,14 @@ function limpiar() {
   nivel.value = ''
   sector.value = ''
   soloGuardadas.value = false
-  seleccionadaId.value = null
   jobs.limpiarFiltros()
 }
 
-async function postular(id) {
-  const estado = jobs.estadoDe(id)
-  const siguiente = estado === 'Postulado' ? 'En proceso' : estado === 'En proceso' ? 'Cerrado' : 'Postulado'
-  await jobs.marcarPostulacion(id, siguiente)
-}
 </script>
 
 <template>
   <div class="empleos">
+    <p v-if="$route.query.inicio" class="notice notice--ok">Tu camino empieza aquí. Elige un empleo y postula para crear tu primera ruta de aprendizaje.</p>
     <form class="panel panel-pad filtros" @submit.prevent="buscar">
       <BaseInput v-model="q" label="Puesto, empresa o habilidad" placeholder="asistente, enfermeria, ventas" />
       <BaseSelect v-model="sector" label="Sector" :opciones="sectores" placeholder="Todos los sectores" />
@@ -99,22 +92,12 @@ async function postular(id) {
           :key="v.id"
           :vacante="v"
           :favorita="jobs.favoritos.includes(v.id)"
-          :seleccionada="seleccionadaId === v.id"
-          @ver="seleccionadaId = v.id"
+          @ver="router.push('/empleos/' + v.id)"
           @favorito="jobs.alternarFavorito"
         />
       </div>
 
-      <JobDetail
-        v-if="seleccionada"
-        :vacante="seleccionada"
-        :favorita="jobs.favoritos.includes(seleccionada.id)"
-        :estado="jobs.estadoDe(seleccionada.id)"
-        @favorito="jobs.alternarFavorito"
-        @postular="postular"
-        @cerrar="seleccionadaId = null"
-      />
-      <aside v-else class="panel panel-pad pista">
+      <aside class="panel panel-pad pista">
         <h3>Elige una vacante</h3>
         <p class="small muted">
           Al abrir una vacante veras tu porcentaje de compatibilidad, las habilidades que te faltan
