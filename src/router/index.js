@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { jobsService } from '@/services/jobsService'
 
 const routes = [
   { path: '/', redirect: '/dashboard' },
@@ -72,5 +73,14 @@ router.beforeEach(async (to) => {
   document.title = to.meta.titulo ? `${to.meta.titulo} · PathBridge` : 'PathBridge'
   return true
 })
+
+if (to.name === 'dashboard' && auth.autenticado) {
+  try {
+    const applications = await jobsService.postulaciones(auth.usuario.id)
+    if (!applications.length) {
+      return { name: 'empleos', query: { inicio: '1' } }
+    }
+  } catch { /* Dashboard displays service errors. */ }
+}
 
 export default router
