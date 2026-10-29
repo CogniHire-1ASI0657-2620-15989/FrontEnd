@@ -51,7 +51,12 @@ const routes = [
   { 
     path: '/certificados/:id', 
     component: () => import('@/views/CertificateView.vue'), 
-    meta: { titulo: 'Constancia de aprendizaje' } }
+    meta: { titulo: 'Constancia de aprendizaje' } },
+    { 
+      path: '/asistente', 
+      component: () => import('@/views/ChatView.vue'), 
+      meta: { titulo: 'Asistente profesional' } 
+    }
 ]
 
 const router = createRouter({
