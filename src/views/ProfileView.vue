@@ -47,7 +47,7 @@ function cargarDesdeUsuario(u) {
   })
 }
 cargarDesdeUsuario(auth.usuario)
-watch(() => auth.usuario?.id, () => cargarDesdeUsuario(auth.usuario))
+watch(() => auth.usuario, () => cargarDesdeUsuario(auth.usuario))
 
 const sugerencias = computed(() => sugerenciasDeHabilidades(form.sectorObjetivo))
 
@@ -105,8 +105,8 @@ const imprimir = () => window.print()
           <BaseInput v-model="form.apellido" label="Apellidos" :error="errores.apellido" />
         </div>
         <div class="dos">
-          <BaseSelect v-model="form.tipoDocumento" label="Tipo de documento" :opciones="tiposDocumento" placeholder="Selecciona" disabled/>
-          <BaseInput v-model="form.documento" label="Numero de documento" :error="errores.documento" disabled/>
+          <BaseSelect v-model="form.tipoDocumento" label="Tipo de documento" :opciones="tiposDocumento" placeholder="Selecciona" disabled />
+          <BaseInput v-model="form.documento" label="Numero de documento" :error="errores.documento" disabled ayuda="Identidad establecida durante el registro." />
         </div>
         <div class="dos">
           <BaseInput v-model="form.fechaNacimiento" label="Fecha de nacimiento" type="date" />
@@ -176,6 +176,7 @@ const imprimir = () => window.print()
             <BaseInput v-model="c.anio" label="Ano" />
           </div>
           <BaseButton variante="peligro" @click="quitarCertificado(i)">Quitar</BaseButton>
+          <RouterLink v-if="c.id" :to="'/certificados/' + encodeURIComponent(c.id)">Ver y descargar constancia →</RouterLink>
         </div>
       </section>
 

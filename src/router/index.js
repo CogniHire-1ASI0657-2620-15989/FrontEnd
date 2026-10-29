@@ -46,7 +46,11 @@ const routes = [
     path: '/aprendizaje', 
     component: () => import('@/views/LearningPathView.vue'), 
     meta: { titulo: 'Learning Path' } 
-  }
+  },
+  { 
+    path: '/certificados/:id', 
+    component: () => import('@/views/CertificateView.vue'), 
+    meta: { titulo: 'Constancia de aprendizaje' } }
 ]
 
 const router = createRouter({
