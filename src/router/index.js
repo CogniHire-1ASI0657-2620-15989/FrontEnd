@@ -33,7 +33,20 @@ const routes = [
     component: () => import('@/views/ProfileView.vue'),
     meta: { titulo: 'Mi perfil' }
   },
-  { path: '/:pathMatch(.*)*', name: 'no-encontrado', component: () => import('@/views/NotFoundView.vue') }
+  { 
+    path: '/:pathMatch(.*)*', 
+    name: 'no-encontrado', 
+    component: () => import('@/views/NotFoundView.vue') },
+  { 
+    path: '/empleos/:id', 
+    component: () => import('@/views/JobDetailView.vue'), 
+    meta: { titulo: 'Detalle del empleo' } 
+  },
+  { 
+    path: '/aprendizaje', 
+    component: () => import('@/views/LearningPathView.vue'), 
+    meta: { titulo: 'Learning Path' } 
+  }
 ]
 
 const router = createRouter({
