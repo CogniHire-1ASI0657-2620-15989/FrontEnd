@@ -1,5 +1,6 @@
 <script setup>
-import { reactive, ref, computed } from 'vue'
+import { reactive, ref, computed, watch } from 'vue'
+import { identityService } from '@/services/identityService'
 import { useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { sectores, sugerenciasDeHabilidades } from '@/data/jobs'
@@ -17,6 +18,9 @@ const router = useRouter()
 
 const paso = ref(1)
 const errorGeneral = ref('')
+const identidad = ref(null)
+const consentimiento = ref(false)
+const validando = ref(false)
 const errores = reactive({})
 
 const form = reactive({
@@ -44,9 +48,7 @@ const form = reactive({
 })
 
 const tiposDocumento = [
-  { valor: 'DNI', texto: 'DNI' },
-  { valor: 'CE', texto: 'Carne de extranjeria' },
-  { valor: 'PAS', texto: 'Pasaporte' }
+  { valor: 'DNI', texto: 'DNI' }
 ]
 const nivelesEstudios = [
   'Secundaria completa',
@@ -108,8 +110,21 @@ function validarPaso() {
   return sinErrores(nuevos)
 }
 
+watch(() => [form.documento, form.nombre, form.apellido, form.tipoDocumento], () => { identidad.value = null })
+async function validarIdentidad() {
+  errorGeneral.value = ''
+  validando.value = true
+  try { identidad.value = await identityService.validar({ ...form, consentimiento: consentimiento.value }) }
+  catch (e) { errorGeneral.value = e.message }
+  finally { validando.value = false }
+}
 function siguiente() {
-  if (validarPaso()) paso.value += 1
+  if (!validarPaso()) return
+  if (paso.value === 2 && form.tipoDocumento === 'DNI' && (!identidad.value || !consentimiento.value)) {
+    errorGeneral.value = 'Completa la validación de DNI para continuar'
+    return
+  }
+  paso.value += 1
 }
 
 function anterior() {
@@ -119,9 +134,10 @@ function anterior() {
 
 async function crearCuenta() {
   if (!validarPaso()) return
+  if (form.tipoDocumento === 'DNI' && (!identidad.value || !consentimiento.value)) { errorGeneral.value = 'Completa la validación de DNI'; return }
   const { confirmacion, ...datos } = form
   try {
-    await auth.registrar({ ...datos })
+    await auth.registrar({ ...datos, identidad: identidad.value })
     router.push('/perfil')
   } catch (e) {
     errorGeneral.value = e.message
@@ -176,6 +192,13 @@ async function crearCuenta() {
                      :error="errores.telefono" />
         </div>
         <BaseInput v-model="form.ciudad" label="Ciudad donde vives" placeholder="Lima" :error="errores.ciudad" />
+        <section v-if="form.tipoDocumento === 'DNI'" class="panel panel-pad stack">
+          <h3>Validación de DNI</h3>
+          <p class="small muted">Demostración de RENIEC en frontend: revisa el formato y la unicidad local. No consulta RENIEC ni acredita tu identidad.</p>
+          <label class="small"><input v-model="consentimiento" type="checkbox" /> Autorizo el tratamiento de mis datos para esta validación.</label>
+          <BaseButton :cargando="validando" @click="validarIdentidad">Validar DNI en frontend</BaseButton>
+          <p v-if="identidad" class="notice notice--ok" role="status">Validación local completada · Identidad no verificada por RENIEC</p>
+        </section>
       </template>
 
       <!-- Paso 3 -->

@@ -105,8 +105,8 @@ const imprimir = () => window.print()
           <BaseInput v-model="form.apellido" label="Apellidos" :error="errores.apellido" />
         </div>
         <div class="dos">
-          <BaseSelect v-model="form.tipoDocumento" label="Tipo de documento" :opciones="tiposDocumento" placeholder="Selecciona" />
-          <BaseInput v-model="form.documento" label="Numero de documento" :error="errores.documento" />
+          <BaseSelect v-model="form.tipoDocumento" label="Tipo de documento" :opciones="tiposDocumento" placeholder="Selecciona" disabled/>
+          <BaseInput v-model="form.documento" label="Numero de documento" :error="errores.documento" disabled/>
         </div>
         <div class="dos">
           <BaseInput v-model="form.fechaNacimiento" label="Fecha de nacimiento" type="date" />
