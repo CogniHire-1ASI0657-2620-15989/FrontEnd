@@ -67,25 +67,42 @@ const router = createRouter({
 
 router.beforeEach(async (to) => {
   const auth = useAuthStore()
-  if (!auth.listo) await auth.iniciar()
+
+  if (!auth.listo) {
+    await auth.iniciar()
+  }
 
   if (!to.meta.publico && !auth.autenticado) {
-    return { name: 'login', query: { redirect: to.fullPath } }
+    return {
+      name: 'login',
+      query: { redirect: to.fullPath }
+    }
   }
+
   if (to.meta.publico && auth.autenticado) {
     return { name: 'dashboard' }
   }
-  document.title = to.meta.titulo ? `${to.meta.titulo} · PathBridge` : 'PathBridge'
+
+  if (to.name === 'dashboard' && auth.autenticado) {
+    try {
+      const applications = await jobsService.postulaciones(auth.usuario.id)
+
+      if (!applications.length) {
+        return {
+          name: 'empleos',
+          query: { inicio: '1' }
+        }
+      }
+    } catch {
+      // El dashboard mostrará los errores al cargar sus datos.
+    }
+  }
+
+  document.title = to.meta.titulo
+    ? `${to.meta.titulo} · PathBridge`
+    : 'PathBridge'
+
   return true
 })
-
-if (to.name === 'dashboard' && auth.autenticado) {
-  try {
-    const applications = await jobsService.postulaciones(auth.usuario.id)
-    if (!applications.length) {
-      return { name: 'empleos', query: { inicio: '1' } }
-    }
-  } catch { /* Dashboard displays service errors. */ }
-}
 
 export default router
