@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: pathbridge-frontend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    envVars:
+      - key: VITE_USE_MOCK
+        value: "true"
+      - key: VITE_API_URL
+        value: /api
