@@ -1,9 +1,7 @@
 <script setup>
-import { reactive, ref, computed, watch } from 'vue'
-import { identityService } from '@/services/identityService'
+import { reactive, ref, computed } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { sectores, sugerenciasDeHabilidades } from '@/data/jobs'
 import {
   validar, sinErrores, required, email as esEmail,
   password as esPassword, documento as esDocumento, telefono as esTelefono
@@ -11,16 +9,15 @@ import {
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
-import TagInput from '@/components/ui/TagInput.vue'
+import SkillEditor from '@/components/ui/SkillEditor.vue'
+import { USA_MOCK } from '@/services/http'
+import { segmentos } from '@/services/gatewayAdapters'
 
 const auth = useAuthStore()
 const router = useRouter()
 
 const paso = ref(1)
 const errorGeneral = ref('')
-const identidad = ref(null)
-const consentimiento = ref(false)
-const validando = ref(false)
 const errores = reactive({})
 
 const form = reactive({
@@ -31,6 +28,9 @@ const form = reactive({
   // Paso 2 — identidad
   nombre: '',
   apellido: '',
+  segundoApellido: '',
+  segmento: 'trabajador',
+  pais: 'Perú',
   tipoDocumento: 'DNI',
   documento: '',
   fechaNacimiento: '',
@@ -40,10 +40,6 @@ const form = reactive({
   nivelEstudios: '',
   carrera: '',
   institucion: '',
-  cicloOAnioEgreso: '',
-  sectorObjetivo: '',
-  cargoObjetivo: '',
-  modalidadPreferida: '',
   habilidades: []
 })
 
@@ -59,7 +55,6 @@ const nivelesEstudios = [
   'Titulado',
   'Maestria'
 ]
-const modalidades = ['Remoto', 'Hibrido', 'Presencial']
 
 const reglasPorPaso = {
   1: {
@@ -69,34 +64,40 @@ const reglasPorPaso = {
   },
   2: {
     nombre: [(v) => required(v, 'El nombre')],
-    apellido: [(v) => required(v, 'El apellido')],
+    apellido: [(v) => required(v, USA_MOCK ? 'El apellido' : 'El primer apellido')],
+    ...(USA_MOCK ? {} : {
+      segundoApellido: [(v) => required(v, 'El segundo apellido')],
+      segmento: [(v) => required(v, 'Tu situación')]
+    }),
     documento: [(v) => esDocumento(v, form.tipoDocumento)],
-    fechaNacimiento: [(v) => required(v, 'La fecha de nacimiento')],
-    telefono: [esTelefono],
+    // El Gateway no recibe fecha de nacimiento ni telefono.
+    ...(USA_MOCK
+      ? {
+          fechaNacimiento: [(v) => required(v, 'La fecha de nacimiento')],
+          telefono: [esTelefono]
+        }
+      : {}),
     ciudad: [(v) => required(v, 'La ciudad')]
   },
   3: {
     nivelEstudios: [(v) => required(v, 'El nivel de estudios')],
     carrera: [(v) => required(v, 'La carrera')],
-    institucion: [(v) => required(v, 'La institucion')],
-    sectorObjetivo: [(v) => required(v, 'El sector')],
-    cargoObjetivo: [(v) => required(v, 'El cargo objetivo')]
+    institucion: [(v) => required(v, 'La institucion')]
   }
 }
 
 const titulos = {
   1: 'Crea tu acceso',
   2: 'Tus datos personales',
-  3: 'Estudios y objetivo laboral'
+  3: 'Estudios y habilidades'
 }
 const bajadas = {
   1: 'Con este correo y contrasena entraras a PathBridge.',
   2: 'Estos datos van en el encabezado de tu curriculum.',
-  3: 'Elige tu sector y tu cargo objetivo: con eso calculamos tu compatibilidad con cada vacante.'
+  3: 'Registra tu formación y tus habilidades con su nivel de dominio.'
 }
 
 const esUltimo = computed(() => paso.value === 3)
-const sugerencias = computed(() => sugerenciasDeHabilidades(form.sectorObjetivo))
 
 function limpiar() {
   Object.keys(errores).forEach((k) => delete errores[k])
@@ -110,20 +111,8 @@ function validarPaso() {
   return sinErrores(nuevos)
 }
 
-watch(() => [form.documento, form.nombre, form.apellido, form.tipoDocumento], () => { identidad.value = null })
-async function validarIdentidad() {
-  errorGeneral.value = ''
-  validando.value = true
-  try { identidad.value = await identityService.validar({ ...form, consentimiento: consentimiento.value }) }
-  catch (e) { errorGeneral.value = e.message }
-  finally { validando.value = false }
-}
 function siguiente() {
   if (!validarPaso()) return
-  if (paso.value === 2 && form.tipoDocumento === 'DNI' && (!identidad.value || !consentimiento.value)) {
-    errorGeneral.value = 'Completa la validación de DNI para continuar'
-    return
-  }
   paso.value += 1
 }
 
@@ -132,15 +121,29 @@ function anterior() {
   paso.value -= 1
 }
 
+// Campo del Gateway -> campo del formulario, para marcar errores 422 (cada uno en su paso).
+const camposApi = {
+  dni: 'documento', first_name: 'nombre', first_last_name: 'apellido',
+  second_last_name: 'segundoApellido', email: 'email', password: 'password',
+  segment: 'segmento', city: 'ciudad', country: 'pais'
+}
+const pasoDe = campo => Object.entries(reglasPorPaso).find(([, reglas]) => campo in reglas)?.[0]
+
 async function crearCuenta() {
   if (!validarPaso()) return
-  if (form.tipoDocumento === 'DNI' && (!identidad.value || !consentimiento.value)) { errorGeneral.value = 'Completa la validación de DNI'; return }
   const { confirmacion, ...datos } = form
   try {
-    await auth.registrar({ ...datos, identidad: identidad.value })
+    await auth.registrar({ ...datos })
     router.push('/perfil')
   } catch (e) {
     errorGeneral.value = e.message
+    // 422: llevar al primer paso con un campo invalido y marcarlo.
+    const invalidos = Object.entries(e.campos || {}).flatMap(([campo, msg]) => camposApi[campo] ? [[camposApi[campo], msg]] : [])
+    if (invalidos.length) {
+      Object.assign(errores, Object.fromEntries(invalidos))
+      const primero = Math.min(...invalidos.map(([campo]) => Number(pasoDe(campo) ?? paso.value)))
+      paso.value = primero
+    }
   }
 }
 </script>
@@ -176,8 +179,9 @@ async function crearCuenta() {
       <template v-else-if="paso === 2">
         <div class="dos">
           <BaseInput v-model="form.nombre" label="Nombres" :error="errores.nombre" />
-          <BaseInput v-model="form.apellido" label="Apellidos" :error="errores.apellido" />
+          <BaseInput v-model="form.apellido" :label="USA_MOCK ? 'Apellidos' : 'Primer apellido'" :error="errores.apellido" />
         </div>
+        <BaseInput v-if="!USA_MOCK" v-model="form.segundoApellido" label="Segundo apellido" :error="errores.segundoApellido" />
         <div class="dos">
           <BaseSelect v-model="form.tipoDocumento" label="Tipo de documento" :opciones="tiposDocumento"
                       placeholder="Selecciona" />
@@ -185,20 +189,18 @@ async function crearCuenta() {
                      :ayuda="form.tipoDocumento === 'DNI' ? '8 digitos' : 'Entre 6 y 12 caracteres'"
                      :error="errores.documento" />
         </div>
-        <div class="dos">
+        <div v-if="USA_MOCK" class="dos">
           <BaseInput v-model="form.fechaNacimiento" label="Fecha de nacimiento" type="date"
                      :error="errores.fechaNacimiento" />
           <BaseInput v-model="form.telefono" label="Telefono (opcional)" placeholder="999 999 999"
                      :error="errores.telefono" />
         </div>
-        <BaseInput v-model="form.ciudad" label="Ciudad donde vives" placeholder="Lima" :error="errores.ciudad" />
-        <section v-if="form.tipoDocumento === 'DNI'" class="panel panel-pad stack">
-          <h3>Validación de DNI</h3>
-          <p class="small muted">Demostración de RENIEC en frontend: revisa el formato y la unicidad local. No consulta RENIEC ni acredita tu identidad.</p>
-          <label class="small"><input v-model="consentimiento" type="checkbox" /> Autorizo el tratamiento de mis datos para esta validación.</label>
-          <BaseButton :cargando="validando" @click="validarIdentidad">Validar DNI en frontend</BaseButton>
-          <p v-if="identidad" class="notice notice--ok" role="status">Validación local completada · Identidad no verificada por RENIEC</p>
-        </section>
+        <div class="dos">
+          <BaseInput v-model="form.ciudad" label="Ciudad donde vives" placeholder="Lima" :error="errores.ciudad" />
+          <BaseInput v-if="!USA_MOCK" v-model="form.pais" label="País" placeholder="Perú" :error="errores.pais" />
+        </div>
+        <BaseSelect v-if="!USA_MOCK" v-model="form.segmento" label="¿Cuál describe mejor tu situación?"
+                    :opciones="segmentos" :error="errores.segmento" />
       </template>
 
       <!-- Paso 3 -->
@@ -213,19 +215,8 @@ async function crearCuenta() {
         <div class="dos">
           <BaseInput v-model="form.institucion" label="Universidad, instituto o colegio"
                      placeholder="Nombre de la institucion" :error="errores.institucion" />
-          <BaseInput v-model="form.cicloOAnioEgreso" label="Ciclo actual o ano de egreso" placeholder="8vo ciclo" />
         </div>
-        <div class="dos">
-          <BaseSelect v-model="form.sectorObjetivo" label="Sector en el que quieres trabajar"
-                      :opciones="sectores" :error="errores.sectorObjetivo" />
-          <BaseInput v-model="form.cargoObjetivo" label="Cargo al que aspiras"
-                     placeholder="Asistente contable, practicante de enfermeria..."
-                     :error="errores.cargoObjetivo" />
-        </div>
-        <BaseSelect v-model="form.modalidadPreferida" label="Modalidad preferida" :opciones="modalidades" />
-        <TagInput v-model="form.habilidades" label="Habilidades que ya manejas"
-                  :sugerencias="sugerencias"
-                  :placeholder="form.sectorObjetivo ? 'Escribe y presiona Enter' : 'Elige tu sector para ver sugerencias'" />
+        <SkillEditor v-model="form.habilidades" />
       </template>
 
       <div class="acciones">

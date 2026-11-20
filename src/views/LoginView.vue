@@ -16,11 +16,14 @@ const errores = reactive({})
 const errorGeneral = ref('')
 const aviso = ref('')
 const recuperando = ref(false)
+const tokenRecuperacion = ref('')
+const sesionExpirada = route.query.expirada === '1'
 
 function limpiarErrores() {
   Object.keys(errores).forEach((k) => delete errores[k])
   errorGeneral.value = ''
   aviso.value = ''
+  tokenRecuperacion.value = ''
 }
 
 async function ingresar() {
@@ -49,8 +52,10 @@ async function recuperar() {
   }
   recuperando.value = true
   try {
-    const { mensaje } = await authService.recuperarPassword(form.email)
+    const { mensaje, token } = await authService.recuperarPassword(form.email)
     aviso.value = mensaje
+    // Solo el entorno academico devuelve el token; en produccion llega por correo.
+    tokenRecuperacion.value = token || ''
   } catch (e) {
     errorGeneral.value = e.message
   } finally {
@@ -65,8 +70,15 @@ async function recuperar() {
     <p class="muted">Retoma tu ruta donde la dejaste.</p>
 
     <form class="stack" novalidate @submit.prevent="ingresar">
-      <p v-if="errorGeneral" class="notice notice--error">{{ errorGeneral }}</p>
-      <p v-if="aviso" class="notice notice--ok">{{ aviso }}</p>
+      <p v-if="sesionExpirada && !errorGeneral" class="notice notice--error" role="status">Tu sesión venció. Ingresa de nuevo para continuar.</p>
+      <p v-if="errorGeneral" class="notice notice--error" role="alert">{{ errorGeneral }}</p>
+      <p v-if="auth.errorSesion && !errorGeneral" class="notice notice--error" role="alert">{{ auth.errorSesion }}</p>
+      <p v-if="aviso" class="notice notice--ok" role="status">
+        {{ aviso }}
+        <RouterLink :to="{ path: '/restablecer-contrasena', query: tokenRecuperacion ? { token: tokenRecuperacion } : {} }">
+          Ya tengo mi código →
+        </RouterLink>
+      </p>
 
       <BaseInput
         v-model="form.email" label="Correo electronico" type="email"

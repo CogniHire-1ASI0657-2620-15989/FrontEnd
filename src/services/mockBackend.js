@@ -4,6 +4,7 @@
  * Cada funcion imita la respuesta de un endpoint REST.
  */
 import { vacantes } from '@/data/jobs'
+import { normalizarHabilidades } from '@/utils/skills'
 
 const KEY_USERS = 'pb.users'
 const KEY_SESSION = 'pb.session'
@@ -26,9 +27,7 @@ export const mockApi = {
     await espera()
     if (datos.tipoDocumento !== 'DNI') throw new Error('El registro requiere un DNI')
     const lista = usuarios()
-    if (datos.tipoDocumento === 'DNI' && (!/^\d{8}$/.test(datos.documento) || datos.identidad?.documento !== datos.documento || datos.identidad?.nombre !== datos.nombre.trim() || datos.identidad?.apellido !== datos.apellido.trim())) {
-      throw new Error('Completa la validación local de DNI')
-    }
+    if (!/^\d{8}$/.test(datos.documento)) throw new Error('El DNI debe contener 8 dígitos')
     if (lista.some((u) => u.email.toLowerCase() === datos.email.toLowerCase())) {
       throw new Error('Ese correo ya esta registrado')
     }
@@ -40,7 +39,7 @@ export const mockApi = {
       creadoEn: new Date().toISOString(),
       ...datos,
       password: hash(datos.password),
-      habilidades: datos.habilidades ?? [],
+      habilidades: normalizarHabilidades(datos.habilidades),
       experiencia: [],
       certificados: [],
       resumenProfesional: '',
@@ -93,6 +92,21 @@ export const mockApi = {
     const existe = usuarios().some((u) => u.email.toLowerCase() === String(email).toLowerCase())
     if (!existe) throw new Error('No encontramos una cuenta con ese correo')
     return { mensaje: 'Te enviamos un enlace para crear una contrasena nueva' }
+  },
+
+  async restablecerPassword() {
+    await espera()
+  },
+
+  async cambiarPassword(id, actual, nueva) {
+    await espera(200)
+    const lista = usuarios()
+    const i = lista.findIndex((u) => u.id === id)
+    if (i === -1) throw new Error('No encontramos tu cuenta')
+    if (lista[i].password !== hash(actual)) throw new Error('La contrasena actual no es correcta')
+    lista[i] = { ...lista[i], password: hash(nueva) }
+    guardar(KEY_USERS, lista)
+    return publico(lista[i])
   },
 
   async buscarVacantes({ q = '', ubicacion = '', modalidad = '', nivel = '', sector = '' } = {}) {
