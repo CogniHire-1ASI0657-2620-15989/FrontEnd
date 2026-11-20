@@ -1,14 +1,21 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useLearningStore } from '@/stores/learning'
+import CertificateUpload from '@/components/profile/CertificateUpload.vue'
+import { USA_MOCK } from '@/services/http'
 
 const learning = useLearningStore()
 
 const error = ref('')
 const busy = ref('')
 const ready = ref(false)
+const selectedCourse = ref('')
+const uploading = ref(false)
+const notice = ref('')
 
-onMounted(async () => {
+async function cargar() {
+  ready.value = false
+  error.value = ''
   try {
     await learning.cargar()
   } catch (e) {
@@ -16,14 +23,40 @@ onMounted(async () => {
   } finally {
     ready.value = true
   }
-})
+}
 
-async function complete(c) {
+onMounted(cargar)
+
+// Con el Gateway: marcar un video visto y subir certificados son acciones independientes.
+async function marcarVisto(c) {
+  busy.value = c.id
+  error.value = ''
+  try {
+    await learning.marcarVisto(c.id)
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    busy.value = ''
+  }
+}
+
+async function certificadoAprobado() {
+  notice.value = ''
+  try {
+    await learning.certificadoAprobado()
+    notice.value = '✓ Certificado aprobado. Actualizamos tu perfil y tu reporte de brechas.'
+  } catch (e) {
+    error.value = e.message
+  }
+}
+
+async function complete(c, certificate) {
   busy.value = c.id
   error.value = ''
 
   try {
-    await learning.completar(c.id)
+    await learning.completar(c.id, certificate)
+    selectedCourse.value = ''
   } catch (e) {
     error.value = e.message
   } finally {
@@ -46,17 +79,19 @@ async function complete(c) {
 
     <p v-if="error" class="notice notice--error" role="alert">
       {{ error }}
+      <button type="button" class="text-button" @click="cargar">Reintentar</button>
     </p>
+    <p v-if="notice" class="notice notice--ok" role="status">{{ notice }}</p>
 
     <p v-if="!ready">Cargando rutas…</p>
 
     <section v-else-if="!learning.rutas.length" class="panel empty-state">
       <span class="empty-icon">↗</span>
       <h2>Tu próximo paso empieza con un empleo</h2>
-      <p>Postula a una vacante para crear una ruta basada en sus requisitos.</p>
+      <p>Guarda una vacante y analiza sus brechas para crear tu ruta.</p>
 
-      <RouterLink to="/empleos" class="action-link">
-        Buscar un empleo
+      <RouterLink to="/brechas" class="action-link">
+        Analizar mis brechas
       </RouterLink>
     </section>
 
@@ -66,7 +101,8 @@ async function complete(c) {
         Empleo objetivo
         <select
           :value="learning.seleccion"
-          @change="learning.elegir($event.target.value)"
+          :disabled="uploading || !!busy"
+          @change="learning.elegir($event.target.value); selectedCourse = ''"
         >
           <option value="">Selecciona una ruta</option>
           <option
@@ -84,10 +120,13 @@ async function complete(c) {
         <section class="panel panel-pad path-hero">
           <span class="eyebrow">TU RUTA PERSONALIZADA</span>
           <h2>{{ learning.activa.titulo }}</h2>
-          <p>
+          <p v-if="USA_MOCK">
             {{ learning.activa.empresa }} ·
             {{ learning.activa.cursos.reduce((n, c) => n + c.horas, 0) }}
             horas estimadas
+          </p>
+          <p v-else>
+            {{ [learning.activa.empresa, learning.activa.cursos.length + (learning.activa.cursos.length === 1 ? ' video' : ' videos')].filter(Boolean).join(' · ') }}
           </p>
           <strong>{{ learning.progreso(learning.activa) }}% completado</strong>
 
@@ -113,20 +152,48 @@ async function complete(c) {
             </span>
 
             <article class="panel course-card">
-              <div class="course-art" aria-hidden="true">
+              <img v-if="c.miniatura" class="course-thumb" :src="c.miniatura" alt="" loading="lazy">
+              <div v-else class="course-art" aria-hidden="true">
                 {{ c.skill.slice(0, 2).toUpperCase() }}
               </div>
 
               <div class="stack">
                 <div>
                   <span class="eyebrow">
-                    PASO {{ c.orden }} · {{ c.horas }} HORAS
+                    PASO {{ c.orden }}<template v-if="c.horas"> · {{ c.horas }} HORAS</template>
                   </span>
                   <h3>{{ c.titulo }}</h3>
-                  <p class="small muted">Habilidad: {{ c.skill }}</p>
+                  <p class="small muted">Habilidad: {{ c.skill }}<template v-if="c.canal"> · {{ c.canal }}</template></p>
                 </div>
 
-                <div class="row">
+                <div v-if="!USA_MOCK" class="row">
+                  <a v-if="c.url" :href="c.url" target="_blank" rel="noopener noreferrer">Ver video en YouTube ↗</a>
+                  <button
+                    class="action-link"
+                    :disabled="!!busy || uploading || c.completado"
+                    @click="marcarVisto(c)"
+                  >
+                    {{ busy === c.id ? 'Guardando…' : c.completado ? '✓ Video visto' : 'Marcar como visto' }}
+                  </button>
+                  <button
+                    class="text-button"
+                    :disabled="!!busy || uploading"
+                    @click="selectedCourse = selectedCourse === c.id ? '' : c.id"
+                  >
+                    Subir certificado
+                  </button>
+                </div>
+
+                <CertificateUpload
+                  v-if="!USA_MOCK && selectedCourse === c.id"
+                  :nombre="c.titulo"
+                  :learning-path-id="learning.activa.id"
+                  :skill-name="c.skill"
+                  @busy="uploading = $event"
+                  @validated="certificadoAprobado"
+                />
+
+                <div v-if="USA_MOCK" class="row">
                   <a
                     :href="c.url"
                     target="_blank"
@@ -137,31 +204,44 @@ async function complete(c) {
 
                   <button
                     class="action-link"
-                    :disabled="!!busy"
-                    @click="complete(c)"
+                    :disabled="!!busy || uploading"
+                    @click="selectedCourse = selectedCourse === c.id ? '' : c.id"
                   >
                     {{
                       busy === c.id
                         ? 'Guardando…'
-                        : c.completado
-                          ? 'Sincronizar constancia'
+                        : c.certificateId
+                          ? 'Actualizar evidencia PDF'
                           : 'Declarar curso completado'
                     }}
                   </button>
                 </div>
 
-                <span v-if="c.completado" class="small">
-                  ✓ Completado · Constancia disponible en tu CV
+                <CertificateUpload
+                  v-if="USA_MOCK && selectedCourse === c.id"
+                  :nombre="c.titulo"
+                  :course-id="c.id"
+                  :disabled="!!busy"
+                  @busy="uploading = $event"
+                  @validated="certificate => complete(c, certificate)"
+                />
+
+                <span v-if="USA_MOCK && c.completado && c.certificateId" class="notice notice--ok">
+                  ✓ PDF validado · Evidencia registrada en tu perfil
                 </span>
+                <span v-else-if="USA_MOCK && c.completado" class="small muted">Finalización anterior sin PDF. Adjunta evidencia para validarla.</span>
               </div>
             </article>
           </li>
         </ol>
 
-        <p class="small muted">
+        <p v-if="USA_MOCK" class="small muted">
           Los enlaces abren catálogos de cursos; las duraciones son estimaciones.
-          Las constancias de PathBridge reflejan finalización autodeclarada,
-          no acreditaciones del proveedor externo.
+          Para completar un curso debes adjuntar su certificado en PDF.
+        </p>
+        <p v-else class="small muted">
+          Los videos se proponen según las brechas de tu reporte. Si completas un curso externo,
+          sube su certificado para sumar la habilidad a tu perfil.
         </p>
 
         <RouterLink to="/perfil">Ver certificados y CV →</RouterLink>
