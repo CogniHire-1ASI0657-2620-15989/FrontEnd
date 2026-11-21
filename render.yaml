@@ -8,6 +8,7 @@ services:
     healthCheckPath: /healthz
     envVars:
       - key: VITE_USE_MOCK
-        value: "true"
+        value: "false"
+      # URL publica HTTPS del API Gateway, terminada en /api/v1.
       - key: VITE_API_URL
-        value: /api
+        value: https://REEMPLAZAR-GATEWAY.example.com/api/v1

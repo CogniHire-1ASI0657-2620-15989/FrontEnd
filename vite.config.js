@@ -11,7 +11,8 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    // Cuando exista el backend en Python, descomentar para evitar problemas de CORS:
-    // proxy: { '/api': { target: 'http://localhost:8000', changeOrigin: true } }
+    // Opcional en desarrollo: con VITE_API_URL=/api/v1 las llamadas pasan por este proxy
+    // y el navegador no necesita CORS en el Gateway.
+    proxy: { '/api': { target: 'http://localhost:8080', changeOrigin: true } }
   }
 })
