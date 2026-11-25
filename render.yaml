@@ -11,4 +11,5 @@ services:
         value: "false"
       # URL publica HTTPS del API Gateway, terminada en /api/v1.
       - key: VITE_API_URL
-        value: https://REEMPLAZAR-GATEWAY.example.com/api/v1
+        value: https://depilugfz8.execute-api.us-east-1.amazonaws.com/api/v1
+
