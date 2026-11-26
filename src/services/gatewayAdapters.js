@@ -85,8 +85,8 @@ export function normalizarReporte(dto) {
 
 /** Opciones de segmento aceptadas por el registro. La guia solo ejemplifica "trabajador". */
 export const segmentos = [
-  { value: 'practicante', label: 'Estudiante o recién egresado' },
-  { value: 'trabajador', label: 'Trabajando o buscando empleo' }
+  { valor: 'practicante', texto: 'Estudiante o recién egresado' },
+  { valor: 'trabajador', texto: 'Trabajando o buscando empleo' }
 ]
 
 const periodo = (inicio, fin) => [inicio, fin].filter(Boolean).join(' – ')
