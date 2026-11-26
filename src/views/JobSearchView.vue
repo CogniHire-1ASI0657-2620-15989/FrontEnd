@@ -1,10 +1,7 @@
-<script setup>
-import { onMounted, ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
-const router = useRouter()
+﻿<script setup>
+import { onMounted, ref } from 'vue'
 import { useJobsStore } from '@/stores/jobs'
 import { useAuthStore } from '@/stores/auth'
-import { sectores } from '@/data/jobs'
 import JobCard from '@/components/jobs/JobCard.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
@@ -12,125 +9,103 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 
 const jobs = useJobsStore()
 const auth = useAuthStore()
-
 const q = ref('')
-const ubicacion = ref('')
-const modalidad = ref('')
-const nivel = ref('')
-const sector = ref('')
-const soloGuardadas = ref(false)
-
-const modalidades = ['Remoto', 'Hibrido', 'Presencial']
-const niveles = ['Practicante', 'Junior', 'Semi senior']
-
-const lista = computed(() =>
-  soloGuardadas.value ? jobs.vacantesFavoritas : jobs.vacantesAnalizadas
-)
+const ubicacion = ref(auth.usuario?.ciudad || '')
+const radio = ref(0)
+const tamano = ref(10)
+const submitted = ref(null)
+const saving = ref([])
+const error = ref('')
 
 onMounted(async () => {
-  await jobs.buscar()
-  try { await jobs.cargarPostulaciones() } catch(e) { jobs.error = e.message }
+  jobs.limpiarFiltros()
+  try { await jobs.cargarGuardadas() } catch (e) { error.value = e.message }
 })
 
 function buscar() {
-  jobs.buscar({
+  submitted.value = {
     q: q.value,
     ubicacion: ubicacion.value,
-    modalidad: modalidad.value,
-    nivel: nivel.value,
-    sector: sector.value
-  })
+    radio: radio.value,
+    tamano: tamano.value
+  }
+  jobs.buscar({ ...submitted.value, pagina: 1 })
+}
+
+function cambiarPagina(value) {
+  jobs.buscar({ ...submitted.value, pagina: value })
 }
 
 function limpiar() {
   q.value = ''
   ubicacion.value = ''
-  modalidad.value = ''
-  nivel.value = ''
-  sector.value = ''
-  soloGuardadas.value = false
+  radio.value = 0
+  tamano.value = 10
+  submitted.value = null
+  error.value = ''
   jobs.limpiarFiltros()
 }
 
+async function guardar(id) {
+  if (saving.value.includes(id)) return
+  saving.value.push(id)
+  error.value = ''
+  try {
+    await jobs.guardarVacante(id)
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    saving.value = saving.value.filter(value => value !== id)
+  }
+}
 </script>
 
 <template>
-  <div class="empleos">
-    <p v-if="$route.query.inicio" class="notice notice--ok">Tu camino empieza aquí. Elige un empleo y postula para crear tu primera ruta de aprendizaje.</p>
-    <form class="panel panel-pad filtros" @submit.prevent="buscar">
-      <BaseInput v-model="q" label="Puesto, empresa o habilidad" placeholder="asistente, enfermeria, ventas" />
-      <BaseSelect v-model="sector" label="Sector" :opciones="sectores" placeholder="Todos los sectores" />
-      <BaseInput v-model="ubicacion" label="Ubicacion" placeholder="Lima" />
-      <BaseSelect v-model="modalidad" label="Modalidad" :opciones="modalidades" placeholder="Todas" />
-      <BaseSelect v-model="nivel" label="Nivel" :opciones="niveles" placeholder="Todos" />
-      <div class="filtros__acciones">
+  <div class="stack">
+    <header class="page-heading">
+      <div>
+        <span class="eyebrow">ENCUENTRA TU PRÓXIMA OPORTUNIDAD</span>
+        <h1>Búsqueda de trabajo</h1>
+        <p class="muted">Busca un empleo y guarda las vacantes que te interesen.</p>
+      </div>
+      <RouterLink to="/dashboard">Ver mis vacantes guardadas →</RouterLink>
+    </header>
+
+    <form class="panel panel-pad search-filters" @submit.prevent="buscar">
+      <BaseInput v-model="q" label="Puesto, empresa o habilidad" placeholder="Ej. desarrollador, Excel" />
+      <BaseInput v-model="ubicacion" label="Ubicación" placeholder="Lima" />
+      <label>Radio de búsqueda<select v-model="radio"><option v-for="value in [0, 4, 8, 16, 26, 40, 80]" :key="value" :value="value">{{ value }} km</option></select></label>
+      <label>Resultados por página<select v-model="tamano"><option v-for="value in [5, 10, 20]" :key="value" :value="value">{{ value }}</option></select></label>
+      <div class="row">
         <BaseButton tipo="submit" :cargando="jobs.cargando">Buscar</BaseButton>
         <BaseButton variante="secundario" @click="limpiar">Limpiar</BaseButton>
       </div>
     </form>
 
-    <div class="empleos__barra">
-      <p class="muted small">
-        {{ lista.length }} vacante{{ lista.length === 1 ? '' : 's' }}
-        <template v-if="!soloGuardadas"> ordenadas por compatibilidad con tu perfil</template>
-      </p>
-      <label class="switch small">
-        <input v-model="soloGuardadas" type="checkbox" />
-        Ver solo mis guardadas
-      </label>
-    </div>
-
-    <p v-if="jobs.error" class="notice notice--error">{{ jobs.error }}</p>
-
-    <div class="empleos__grid">
-      <div class="empleos__lista">
-        <p v-if="!jobs.cargando && !lista.length" class="panel panel-pad muted">
-          No hay vacantes con esos filtros. Prueba con menos palabras o limpia la busqueda.
-        </p>
-        <JobCard
-          v-for="v in lista"
-          :key="v.id"
-          :vacante="v"
-          :favorita="jobs.favoritos.includes(v.id)"
-          @ver="router.push('/empleos/' + v.id)"
-          @favorito="jobs.alternarFavorito"
-        />
-      </div>
-
-      <aside class="panel panel-pad pista">
-        <h3>Elige una vacante</h3>
-        <p class="small muted">
-          Al abrir una vacante veras tu porcentaje de compatibilidad, las habilidades que te faltan
-          y una ruta de cursos para cerrarlas.
-        </p>
-        <p v-if="!auth.habilidades.length" class="notice notice--error small">
-          Tu perfil aun no tiene habilidades registradas, por eso la compatibilidad sale en cero.
-          Agregalas desde Mi perfil.
-        </p>
-      </aside>
-    </div>
+    <p v-if="jobs.error || error" class="notice notice--error" role="alert">{{ jobs.error || error }}</p>
+    <section v-if="!jobs.buscado" class="panel empty-state">
+      <span class="empty-icon">⌕</span>
+      <h2>¿Qué empleo estás buscando?</h2>
+      <p>Configura tus filtros y pulsa Buscar para visualizar las vacantes.</p>
+    </section>
+    <p v-else-if="jobs.cargando" role="status">Buscando oportunidades…</p>
+    <template v-else>
+      <p v-if="jobs.providerStatus === 'unavailable'" class="notice notice--error" role="status">El proveedor de empleos no está disponible en este momento. Reintenta tu búsqueda más tarde.</p>
+      <p v-if="!jobs.error" class="small muted">{{ jobs.total }} vacantes disponibles · Página {{ jobs.pagina }} de {{ Math.max(1, Math.min(3, Math.ceil(jobs.total / jobs.tamano))) }}</p>
+      <p v-if="!jobs.resultados.length && !jobs.error && jobs.providerStatus !== 'unavailable'" class="panel panel-pad">No encontramos vacantes con esos filtros.</p>
+      <JobCard
+        v-for="job in jobs.resultados"
+        :key="job.id"
+        :vacante="job"
+        :favorita="jobs.favoritos.includes(job.id)"
+        :guardando="saving.includes(job.id)"
+        @favorito="guardar"
+      />
+      <nav v-if="jobs.total > jobs.tamano" class="row" aria-label="Páginas de empleos">
+        <button type="button" class="action-link" :disabled="jobs.pagina <= 1 || jobs.cargando" @click="cambiarPagina(jobs.pagina - 1)">Anterior</button>
+        <button type="button" class="action-link" :disabled="jobs.pagina >= 3 || jobs.pagina * jobs.tamano >= jobs.total || jobs.cargando" @click="cambiarPagina(jobs.pagina + 1)">Siguiente</button>
+      </nav>
+    </template>
   </div>
 </template>
 
-<style scoped>
-.empleos { display: grid; gap: 1rem; }
-.filtros {
-  display: grid; gap: 0.75rem;
-  grid-template-columns: 1.6fr 1.2fr 1fr 1fr 1fr auto;
-  align-items: end;
-}
-.filtros__acciones { display: flex; gap: 0.5rem; }
-.empleos__barra { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
-.empleos__barra p { margin: 0; }
-.switch { display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer; }
-.empleos__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 400px); gap: 1rem; align-items: start; }
-.empleos__lista { display: grid; gap: 0.75rem; }
-.pista { position: sticky; top: 5rem; }
-
-@media (max-width: 1100px) {
-  .filtros { grid-template-columns: 1fr 1fr; }
-  .empleos__grid { grid-template-columns: 1fr; }
-  .pista { display: none; }
-}
-@media (max-width: 560px) { .filtros { grid-template-columns: 1fr; } }
-</style>

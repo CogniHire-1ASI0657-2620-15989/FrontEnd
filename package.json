@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test": "node tests/frontend-flows.mjs && node tests/gateway-contracts.mjs && node tests/gateway-integration.mjs",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"

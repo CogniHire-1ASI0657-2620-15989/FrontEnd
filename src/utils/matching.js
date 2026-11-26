@@ -4,10 +4,10 @@
  * por la respuesta del backend; la forma del resultado se mantiene igual.
  */
 
-const normalizar = (s) => String(s).trim().toLowerCase()
+const normalizar = (s) => String(typeof s === 'string' ? s : s?.nombre ?? '').trim().toLowerCase()
 
 export function analizarVacante(vacante, habilidadesUsuario = []) {
-  const mias = habilidadesUsuario.map(normalizar)
+  const mias = habilidadesUsuario.map(normalizar).filter(Boolean)
   const tiene = (req) => mias.some((m) => m === normalizar(req) || m.includes(normalizar(req)) || normalizar(req).includes(m))
 
   const duras = vacante.hardSkills ?? []

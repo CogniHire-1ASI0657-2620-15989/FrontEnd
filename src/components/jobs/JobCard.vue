@@ -1,61 +1,32 @@
-<script setup>
-import MatchRing from '@/components/ui/MatchRing.vue'
+﻿<script setup>
 import { hace, sueldo } from '@/utils/format'
 
 defineProps({
   vacante: { type: Object, required: true },
   favorita: Boolean,
-  seleccionada: Boolean
+  guardando: Boolean
 })
-defineEmits(['ver', 'favorito'])
+defineEmits(['favorito'])
 </script>
 
 <template>
-  <article :class="['vacante', { 'is-seleccionada': seleccionada }]" @click="$emit('ver', vacante)">
-    <div class="vacante__texto">
-      <h3>{{ vacante.titulo }}</h3>
-      <p class="muted small">{{ vacante.empresa }} · {{ vacante.ubicacion }} · {{ vacante.modalidad }}</p>
-      <p class="muted small">{{ vacante.sector }} · {{ vacante.nivel }}</p>
-      <p class="small">{{ sueldo(vacante.sueldoMin, vacante.sueldoMax) }}</p>
-
-      <div class="vacante__skills">
-        <span v-for="s in vacante.analisis.faltantes.slice(0, 3)" :key="s" class="chip chip--gap">{{ s }}</span>
-        <span v-if="!vacante.analisis.faltantes.length" class="chip chip--have">Cumples todos los requisitos</span>
-      </div>
-
-      <p class="muted small">{{ hace(vacante.publicada) }} · {{ vacante.fuente }}</p>
+  <article class="panel panel-pad stack">
+    <div>
+      <h3>
+        <RouterLink :to="'/empleos/' + vacante.id">{{ vacante.titulo }}</RouterLink>
+      </h3>
+      <p class="small muted">{{ vacante.empresa }} · {{ vacante.ubicacion }}<template v-if="vacante.tipoEmpleo || vacante.modalidad"> · {{ vacante.tipoEmpleo || vacante.modalidad }}</template></p>
+      <p class="small">{{ vacante.salario || sueldo(vacante.sueldoMin, vacante.sueldoMax) }}</p>
     </div>
-
-    <div class="vacante__lado">
-      <MatchRing :valor="vacante.analisis.match" />
-      <button
-        type="button"
-        class="favorito"
-        :aria-pressed="favorita"
-        :aria-label="favorita ? 'Quitar de guardados' : 'Guardar vacante'"
-        @click.stop="$emit('favorito', vacante.id)"
-      >
-        <svg viewBox="0 0 24 24" width="18" height="18">
-          <path d="M6 3h12v18l-6-4.2L6 21V3Z" :fill="favorita ? 'var(--bridge)' : 'none'"
-                stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
-        </svg>
+    <div class="row">
+      <span v-for="skill in vacante.hardSkills" :key="skill" class="chip">{{ skill }}</span>
+    </div>
+    <div class="page-heading">
+      <span class="small muted">{{ hace(vacante.publicada) }} · {{ vacante.fuente }}</span>
+      <button type="button" class="action-link" :disabled="favorita || guardando" @click="$emit('favorito', vacante.id)">
+        {{ favorita ? '✓ Vacante guardada' : guardando ? 'Guardando…' : 'Guardar vacante' }}
       </button>
     </div>
   </article>
 </template>
 
-<style scoped>
-.vacante {
-  display: flex; gap: 1rem; justify-content: space-between;
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: var(--radius); padding: 1rem 1.1rem; cursor: pointer;
-}
-.vacante:hover { border-color: var(--slate-light); }
-.is-seleccionada { border-color: var(--bridge); box-shadow: 0 0 0 3px var(--bridge-wash); }
-.vacante__texto { display: grid; gap: 0.3rem; min-width: 0; }
-.vacante__texto p { margin: 0; }
-.vacante__skills { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0.25rem 0; }
-.vacante__lado { display: grid; justify-items: center; gap: 0.4rem; flex: none; }
-.favorito { background: none; border: 0; cursor: pointer; color: var(--slate); padding: 0.2rem; }
-.favorito:hover { color: var(--bridge); }
-</style>

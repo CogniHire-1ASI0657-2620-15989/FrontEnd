@@ -9,6 +9,7 @@ export function fechaCorta(iso) {
 }
 
 export function hace(iso) {
+  if (!iso || Number.isNaN(new Date(iso).getTime())) return 'Fecha no informada'
   const dias = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
   if (dias <= 0) return 'Publicado hoy'
   if (dias === 1) return 'Publicado ayer'
