@@ -1,13 +1,12 @@
-<script setup>
+﻿<script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { useLearningStore } from '@/stores/learning'
-import { jobsService } from '@/services/jobsService'
+import { useJobsStore } from '@/stores/jobs'
 import { chatService } from '@/services/chatService'
 import { USA_MOCK } from '@/services/http'
 
 const auth = useAuthStore()
-const learning = useLearningStore()
+const jobsStore = useJobsStore()
 const key = 'pb.chats.' + auth.usuario.id
 
 const chats = ref([])
@@ -15,7 +14,6 @@ const selected = ref('')
 const text = ref('')
 const busy = ref(false)
 const error = ref('')
-const jobs = ref([])
 const log = ref(null)
 
 const active = computed(() =>
@@ -23,11 +21,7 @@ const active = computed(() =>
 )
 
 const options = computed(() =>
-  active.value?.modo === 'empleo'
-    ? jobs.value.map(j => ({ id: j.id, label: j.titulo }))
-    : learning.rutas.flatMap(p =>
-        p.cursos.map(c => ({ id: c.id, label: c.titulo }))
-      )
+  jobsStore.guardadas.map(job => ({ id: job.id, label: job.titulo }))
 )
 
 function save() {
@@ -60,12 +54,6 @@ function remove(id) {
   save()
 }
 
-function mode(value) {
-  active.value.modo = value
-  active.value.contextoId = ''
-  save()
-}
-
 async function scroll() {
   await nextTick()
 
@@ -76,7 +64,7 @@ async function scroll() {
 
 onMounted(async () => {
   try {
-    chats.value = JSON.parse(localStorage.getItem(key)) || []
+    chats.value = (JSON.parse(localStorage.getItem(key)) || []).filter(c => c.modo !== 'curso')
   } catch {
     chats.value = []
   }
@@ -85,8 +73,7 @@ onMounted(async () => {
   if (!active.value) create()
 
   try {
-    await learning.cargar()
-    jobs.value = await jobsService.buscar({})
+    await jobsStore.cargarGuardadas()
   } catch (e) {
     error.value = e.message
   }
@@ -113,7 +100,7 @@ async function send() {
   try {
     const reply = await chatService.send(auth.usuario.id, {
       conversacionId: c.id,
-      modo: c.modo,
+      modo: 'empleo',
       contextoId: c.contextoId,
       contexto: options.value.find(o => o.id === c.contextoId)?.label || '',
       mensajes: c.mensajes
@@ -176,36 +163,22 @@ async function send() {
           </span>
         </div>
 
-        <div class="context-toggle">
-          <button
-            :disabled="busy"
-            :class="{ selected: active.modo === 'empleo' }"
-            @click="mode('empleo')"
-          >
-            Empleos
-          </button>
-          <button
-            :disabled="busy"
-            :class="{ selected: active.modo === 'curso' }"
-            @click="mode('curso')"
-          >
-            Cursos
-          </button>
-        </div>
+        <p class="small muted">Orientación laboral, búsqueda de empleo, CV y entrevistas.</p>
 
         <label class="small">
-          Contexto de la conversación
+          Vacante guardada de referencia
           <select
             v-model="active.contextoId"
             :disabled="busy"
             @change="save"
           >
-            <option value="">Sin contexto seleccionado</option>
+            <option value="">Orientación general de empleos</option>
             <option v-for="o in options" :key="o.id" :value="o.id">
               {{ o.label }}
             </option>
           </select>
         </label>
+        <RouterLink to="/empleos">Buscar y guardar más empleos →</RouterLink>
       </header>
 
       <div ref="log" class="chat-messages" role="log" aria-live="polite">
@@ -213,15 +186,15 @@ async function send() {
           <span class="empty-icon">✦</span>
           <h1>¿Cuál es tu siguiente paso?</h1>
           <p>
-            Prepara tu próxima entrevista o avanza en lo que estás aprendiendo.
+            Encuentra oportunidades, mejora tu CV y prepara tu próxima entrevista.
           </p>
 
           <div class="row">
             <button @click="text = 'Ayúdame a preparar mi entrevista'">
               Preparar una entrevista ↗
             </button>
-            <button @click="text = 'Ayúdame a organizar mis estudios'">
-              Organizar mis estudios ↗
+            <button @click="text = 'Ayúdame a mejorar mi CV para buscar empleo'">
+              Mejorar mi CV ↗
             </button>
           </div>
         </div>

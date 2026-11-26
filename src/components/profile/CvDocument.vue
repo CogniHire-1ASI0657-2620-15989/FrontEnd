@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { nombreCompleto } from '@/utils/format'
+import { normalizarHabilidades } from '@/utils/skills'
 
 const props = defineProps({ usuario: { type: Object, required: true } })
 
@@ -16,10 +17,7 @@ const documento = computed(() =>
   <article class="cv">
     <header class="cv__cab">
       <h1>{{ nombreCompleto(usuario) }}</h1>
-      <p class="cv__cargo">
-        {{ usuario.cargoObjetivo || 'Cargo objetivo por definir' }}
-        <template v-if="usuario.sectorObjetivo"> · {{ usuario.sectorObjetivo }}</template>
-      </p>
+      <p class="cv__cargo">{{ usuario.carrera }}</p>
       <p class="cv__contacto">{{ contacto.join(' · ') }}</p>
       <p v-if="documento" class="cv__contacto">{{ documento }}</p>
     </header>
@@ -36,7 +34,6 @@ const documento = computed(() =>
         <p>
           {{ usuario.institucion }}
           <template v-if="usuario.nivelEstudios"> · {{ usuario.nivelEstudios }}</template>
-          <template v-if="usuario.cicloOAnioEgreso"> · {{ usuario.cicloOAnioEgreso }}</template>
         </p>
       </div>
     </section>
@@ -52,7 +49,9 @@ const documento = computed(() =>
 
     <section v-if="usuario.habilidades?.length">
       <h2>Habilidades</h2>
-      <p class="cv__skills">{{ usuario.habilidades.join(' · ') }}</p>
+      <p class="cv__skills">
+        {{ normalizarHabilidades(usuario.habilidades).map(s => s.nombre + ' (' + s.nivel + ')').join(' · ') }}
+      </p>
     </section>
 
     <section v-if="usuario.certificados?.length">
@@ -60,6 +59,7 @@ const documento = computed(() =>
       <ul class="cv__lista">
         <li v-for="(c, i) in usuario.certificados" :key="i">
           {{ c.nombre }} — {{ c.emisor }}<template v-if="c.anio"> ({{ c.anio }})</template>
+          <span v-if="c.validacion?.estado === 'aprobado'"> · PDF adjunto aprobado{{ c.validacion.tipo === 'tecnica-local' ? ' en revisión técnica local' : '' }}</span>
         </li>
       </ul>
     </section>

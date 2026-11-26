@@ -1,4 +1,85 @@
 /* Variables compartidas */
+.skill-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(140px, 1fr) auto;
+  align-items: end;
+  gap: 0.75rem;
+}
+
+.skill-entry--nuevo {
+  grid-template-columns: minmax(0, 1.5fr) minmax(110px, 0.7fr) minmax(130px, 0.9fr) auto;
+}
+
+.skill-entry input,
+.certificate-upload input:not([type="file"]) {
+  display: block;
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+  font: inherit;
+}
+
+.search-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+  gap: 1rem;
+}
+
+.form-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.profile-page {
+  max-width: 1000px;
+}
+
+.text-button {
+  background: transparent;
+  border: 0;
+  color: var(--bridge);
+  padding: 0.5rem;
+  cursor: pointer;
+  text-decoration: underline;
+  font: inherit;
+}
+
+.certificate-upload,
+.evidence-card {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.certificate-upload input[type="file"] {
+  max-width: 100%;
+}
+
+.processing {
+  padding: 1rem;
+  border-radius: 10px;
+  background: var(--bridge-wash);
+}
+
+@media (max-width: 640px) {
+  .skill-entry--nuevo,
+  .skill-entry,
+  .search-filters,
+  .form-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .application-row {
+    flex-wrap: wrap;
+  }
+}
+
 :root {
   --canvas: #f3f6f8;
   --radius: 14px;
@@ -178,6 +259,14 @@ select {
   font-size: 1.8rem;
   color: var(--bridge);
   font-weight: 600;
+}
+
+.course-thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 10px;
+  background: var(--bridge-wash);
 }
 
 .course-card h3 {
