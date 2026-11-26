@@ -30,7 +30,7 @@ const form = reactive({
   apellido: '',
   segundoApellido: '',
   segmento: 'trabajador',
-  pais: 'Perú',
+  pais: 'Peru',
   tipoDocumento: 'DNI',
   documento: '',
   fechaNacimiento: '',
@@ -132,6 +132,7 @@ const pasoDe = campo => Object.entries(reglasPorPaso).find(([, reglas]) => campo
 async function crearCuenta() {
   if (!validarPaso()) return
   const { confirmacion, ...datos } = form
+  datos.pais = datos.pais.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
   try {
     await auth.registrar({ ...datos })
     router.push('/perfil')
@@ -169,7 +170,7 @@ async function crearCuenta() {
                    placeholder="tucorreo@ejemplo.com" :error="errores.email" />
         <div class="dos">
           <BaseInput v-model="form.password" label="Contrasena" type="password" autocomplete="new-password"
-                     ayuda="Minimo 8 caracteres, con letras y numeros" :error="errores.password" />
+           ayuda="Minimo 8 caracteres, con mayuscula, numero y simbolo (ej. Abc1234!)" :error="errores.password" />
           <BaseInput v-model="form.confirmacion" label="Repite la contrasena" type="password"
                      autocomplete="new-password" :error="errores.confirmacion" />
         </div>
